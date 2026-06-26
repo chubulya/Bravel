@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Step = { kind: "intro" | "choice" | "input" | "voice" | "loader" | "plan" | "home"; title: string; eyebrow?: string; copy?: string; options?: string[]; multi?: boolean; field?: string };
 
@@ -34,6 +34,12 @@ export default function Page() {
   const isNextDisabled = (step.kind === "choice" && !picked.length) || (step.kind === "input" && !name.trim());
   const review = useMemo(() => index % 2 ? "“I finally stopped translating every word in my head. Maya makes practice feel like a real conversation.”" : "“I was nervous at first, but the small daily conversations gave me my voice back.”", [index]);
 
+  useEffect(() => {
+    if (step.kind !== "loader") return;
+    const timer = window.setTimeout(() => setIndex((i) => Math.min(i + 1, steps.length - 1)), 2400);
+    return () => window.clearTimeout(timer);
+  }, [step.kind]);
+
   const next = () => { setPicked([]); setName(""); setIndex((i) => Math.min(i + 1, steps.length - 1)); };
   const select = (option: string) => {
     if (step.multi) setPicked((items) => items.includes(option) ? items.filter((item) => item !== option) : [...items, option].slice(-3));
@@ -44,7 +50,7 @@ export default function Page() {
   return <main className="stage"><section className="phone-shell">
     <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="ambient ambient-three" />
     <header><button aria-label="Go back" className="back" onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={!index}>←</button><div className="brand">bravel</div><span className="step-count">{String(index + 1).padStart(2, "0")} <i /> {String(steps.length).padStart(2, "0")}</span></header>
-    <div className="progress"><span style={{ width: `${progress}%` }} /></div>
+    <div className="progress" role="progressbar" aria-label={`Onboarding ${progress}% complete`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
     <div className="content">
       {step.kind === "intro" && <Maya />}
       {step.kind === "voice" && <VoiceOrb />}
@@ -54,7 +60,7 @@ export default function Page() {
       {step.kind === "choice" && <div className="options">{step.options?.map((option) => <button key={option} className={picked.includes(option) ? "option active" : "option"} onClick={() => select(option)}><span>{option}</span><b>{picked.includes(option) ? "✓" : ""}</b></button>)}</div>}
       {step.kind === "input" && <label className="field"><input value={name} onChange={(e) => setName(e.target.value)} placeholder={step.field} autoFocus /><span>✦</span></label>}
       {step.kind === "voice" && <button className="listen" onClick={next}>Tap to start speaking <span>●</span></button>}
-      {step.kind === "loader" && <p className="loader-line">Tailoring Maya’s approach for you <span>✦</span></p>}
+      {step.kind === "loader" && <p className="loader-line" aria-live="polite">Tailoring Maya’s approach for you <span>✦</span></p>}
       {step.kind === "plan" && <div className="plan-actions"><div className="result-pill"><span>Today</span><b>Speak with Maya</b><em>5 min</em></div></div>}
     </div>
     {!["voice", "loader"].includes(step.kind) && <footer><div className="review"><div className="stars">★★★★★</div><p>{review}</p></div><button className="primary" disabled={isNextDisabled} onClick={next}>{step.kind === "plan" ? "Start my first conversation" : index === 0 ? "Get started" : "Continue"}<span>→</span></button></footer>}
