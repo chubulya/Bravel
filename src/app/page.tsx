@@ -110,6 +110,7 @@ export default function Page() {
   const [name, setName] = useState("");
   const [languageQuery, setLanguageQuery] = useState("");
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [stepMotion, setStepMotion] = useState<"forward" | "back">("forward");
 
   const step = steps[index];
   // Progress applies to the question phase (after the hook, before home).
@@ -123,15 +124,18 @@ export default function Page() {
 
   useEffect(() => {
     if (step.kind !== "loader") return;
-    const t = window.setTimeout(() => setIndex((i) => Math.min(i + 1, steps.length - 1)), 2400);
+    const t = window.setTimeout(() => {
+      setStepMotion("forward");
+      setIndex((i) => Math.min(i + 1, steps.length - 1));
+    }, 3200);
     return () => window.clearTimeout(t);
   }, [step.kind]);
 
   const next = (selection = picked) => {
     if (step.kind === "choice" && selection.length) setAnswers((current) => ({ ...current, [step.title]: selection }));
-    setPicked([]); setName(""); setLanguageQuery(""); setIndex((i) => Math.min(i + 1, steps.length - 1));
+    setPicked([]); setName(""); setLanguageQuery(""); setStepMotion("forward"); setIndex((i) => Math.min(i + 1, steps.length - 1));
   };
-  const back = () => { if (index === 0) setShowWelcome(true); else setIndex((i) => Math.max(0, i - 1)); };
+  const back = () => { if (index === 0) setShowWelcome(true); else { setStepMotion("back"); setIndex((i) => Math.max(0, i - 1)); } };
   const select = (label: string) => {
     if (step.multi) {
       setPicked((items) => items.includes(label) ? items.filter((x) => x !== label) : [...items, label].slice(-3));
@@ -153,8 +157,8 @@ export default function Page() {
 
   return (
     <main className="stage">
-      <section className={`phone-shell funnel${step.kind === "breakout" || step.kind === "summary" || step.kind === "plan" ? " funnel-breakout" : ""}${step.kind === "voice" ? " funnel-voice" : ""}${step.kind === "plan" ? " funnel-plan" : ""}`}>
-        {(step.kind === "breakout" || step.kind === "summary" || step.kind === "plan" || step.kind === "voice") && <img src="/breakout-gradient.png" alt="" className="f-breakout-screenbg" />}
+      <section className={`phone-shell funnel is-step-${stepMotion}${step.kind === "breakout" || step.kind === "summary" || step.kind === "plan" || step.kind === "loader" ? " funnel-breakout" : ""}${step.kind === "voice" ? " funnel-voice" : ""}${step.kind === "loader" ? " funnel-loader" : ""}${step.kind === "plan" ? " funnel-plan" : ""}`}>
+        {(step.kind === "breakout" || step.kind === "summary" || step.kind === "plan" || step.kind === "voice" || step.kind === "loader") && <img src="/breakout-gradient.png" alt="" className="f-breakout-screenbg" />}
         <header className="f-header">
           <button aria-label="Go back" className="f-back" onClick={back}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#1e1e1e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -177,7 +181,7 @@ export default function Page() {
           </div>
         )}
 
-        <div className={`f-content${hideCta ? " f-content-tall" : ""}${step.kind === "breakout" ? " f-content-breakout" : ""}${step.kind === "summary" ? " f-content-summary" : ""}${step.kind === "plan" ? " f-content-plan" : ""}${step.kind === "hook" ? " f-content-hook" : ""}${step.kind === "voice" ? " f-content-voice" : ""}`}>
+        <div key={index} className={`f-content${hideCta ? " f-content-tall" : ""}${step.kind === "breakout" ? " f-content-breakout" : ""}${step.kind === "summary" ? " f-content-summary" : ""}${step.kind === "plan" ? " f-content-plan" : ""}${step.kind === "hook" ? " f-content-hook" : ""}${step.kind === "voice" ? " f-content-voice" : ""}${step.kind === "loader" ? " f-content-loader" : ""}`}>
           {step.kind === "breakout" ? (
             <div className="f-breakout">
               <div className={`f-breakout-img ${step.image?.includes("maya") ? "is-maya" : "is-cards"}`}>
@@ -192,6 +196,8 @@ export default function Page() {
             <ProfileSummary answers={answers} title={step.title} copy={step.copy ?? ""} />
           ) : step.kind === "voice" ? (
             <VoiceConversation onDone={() => next()} />
+          ) : step.kind === "loader" ? (
+            <Loader />
           ) : step.kind === "plan" ? (
             <PlanPreview answers={answers} onStart={() => next()} />
           ) : (
@@ -204,7 +210,7 @@ export default function Page() {
           {step.kind === "hook" && (
             <div className="f-hook">
               <RatingContainer />
-              <ReviewCarousel autoPlay showControls={false} />
+              <ReviewCarousel autoPlay autoPlayMs={3000} showControls={false} />
             </div>
           )}
 
@@ -243,8 +249,6 @@ export default function Page() {
               <input type={step.inputType ?? "text"} value={name} onChange={(e) => setName(e.target.value)} placeholder={step.field} autoFocus />
             </label>
           )}
-
-          {step.kind === "loader" && <Loader />}
 
         </div>
 
@@ -398,13 +402,13 @@ const reviews = [
   { name: "Sofia, 28", location: "California", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&h=160&q=80", portrait: false, title: "It feels like practice made for me.", body: "I used my first lesson before calling my doctor. I felt calmer, clearer, and ready to talk." },
 ];
 
-function ReviewCarousel({ autoPlay = false, showControls = true }: { autoPlay?: boolean; showControls?: boolean }) {
+function ReviewCarousel({ autoPlay = false, autoPlayMs = 5000, showControls = true }: { autoPlay?: boolean; autoPlayMs?: number; showControls?: boolean }) {
   const [active, setActive] = useState(0);
   useEffect(() => {
     if (!autoPlay) return;
-    const timer = window.setInterval(() => setActive((current) => (current + 1) % reviews.length), 5000);
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % reviews.length), autoPlayMs);
     return () => window.clearInterval(timer);
-  }, [autoPlay]);
+  }, [autoPlay, autoPlayMs]);
 
   return (
     <div className="w-review-carousel" aria-label="Learner reviews">
@@ -562,6 +566,12 @@ type ConvPhase = "intro" | "speaking" | "prompt" | "listening" | "thinking" | "d
 
 type ChatMsg = { who: "maya" | "you"; text: string };
 
+const LOADER_STEPS = [
+  { progress: 25, icon: "✨", label: "Deciding on the topics..." },
+  { progress: 64, icon: "🗣️", label: "Polishing role plays..." },
+  { progress: 98, icon: "🗺️", label: "Planning your road map..." },
+];
+
 function VoiceConversation({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<ConvPhase>("intro");
   const [qIndex, setQIndex] = useState(0);
@@ -583,15 +593,18 @@ function VoiceConversation({ onDone }: { onDone: () => void }) {
 
   const setPhaseBoth = (p: ConvPhase) => { phaseRef.current = p; setPhase(p); };
 
-  // Pick a pleasant English voice for Maya
+  // Pick a feminine English voice for Maya when the browser offers one.
   useEffect(() => {
     const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
     if (!synth) return;
     const pick = () => {
       const vs = synth.getVoices();
+      const femaleNames = /female|woman|samantha|victoria|karen|moira|tessa|zira|aria|jenny|joanna|kendra|kimberly|salli|ivy|emma|amy|olivia|serena|ava|allison|susan/i;
       voiceRef.current =
-        vs.find((v) => /en[-_]?US/i.test(v.lang) && /female|samantha|victoria|karen|moira|tessa|zira|aria|jenny/i.test(v.name)) ||
-        vs.find((v) => /en[-_]?GB|en[-_]?US/i.test(v.lang)) ||
+        vs.find((v) => /^en[-_]?US/i.test(v.lang) && femaleNames.test(v.name)) ||
+        vs.find((v) => /^en[-_]?(GB|AU|CA|IE|NZ)/i.test(v.lang) && femaleNames.test(v.name)) ||
+        vs.find((v) => /^en/i.test(v.lang) && femaleNames.test(v.name)) ||
+        vs.find((v) => /^en[-_]?US/i.test(v.lang)) ||
         vs.find((v) => /^en/i.test(v.lang)) ||
         vs[0] || null;
     };
@@ -752,7 +765,7 @@ function VoiceConversation({ onDone }: { onDone: () => void }) {
               <div className="f-msg-head">
                 <span className="f-msg-avatar"><img src={imgMaya} alt="" /></span>
                 <div>
-                  <p className="f-msg-name"><img src={imgAiIcon} alt="" /> Maya</p>
+                  <p className="f-msg-name"><MayaStarsIcon /> Maya</p>
                   <p className="f-msg-role">AI English Tutor</p>
                 </div>
               </div>
@@ -804,6 +817,15 @@ function MicIcon() {
   );
 }
 
+function MayaStarsIcon() {
+  return (
+    <svg className="f-msg-name-stars" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M7.15 1.53c.36-.92 1.66-.92 2.02 0l1.38 3.52c.11.28.33.5.61.61l3.52 1.38c.92.36.92 1.66 0 2.02l-3.52 1.38c-.28.11-.5.33-.61.61l-1.38 3.52c-.36.92-1.66.92-2.02 0l-1.38-3.52a1.08 1.08 0 0 0-.61-.61L1.64 9.06c-.92-.36-.92-1.66 0-2.02l3.52-1.38c.28-.11.5-.33.61-.61l1.38-3.52Z" fill="currentColor" />
+      <path d="M14.28 1.49c.19-.49.88-.49 1.07 0l.39 1c.06.15.18.27.33.33l1 .39c.49.19.49.88 0 1.07l-1 .39a.58.58 0 0 0-.33.33l-.39 1c-.19.49-.88.49-1.07 0l-.39-1a.58.58 0 0 0-.33-.33l-1-.39c-.49-.19-.49-.88 0-1.07l1-.39a.58.58 0 0 0 .33-.33l.39-1Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 function VoiceOrb() {
   return (
     <div className="voice-wrap">
@@ -815,10 +837,52 @@ function VoiceOrb() {
 }
 
 function Loader() {
+  const [progress, setProgress] = useState(0);
+  const activeStep = LOADER_STEPS.reduce((last, item, index) => progress >= item.progress ? index : last, -1);
+
+  useEffect(() => {
+    const duration = 3000;
+    const startedAt = window.performance.now();
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const elapsed = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - elapsed, 3);
+      setProgress(Math.round(eased * 98));
+      if (elapsed < 1) frame = window.requestAnimationFrame(tick);
+    };
+
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
   return (
-    <div className="loader">
-      <div className="loader-orb"><span>✦</span></div>
-      <div className="loader-track"><i/><i/><i/><i/></div>
+    <div className="plan-loader" aria-live="polite">
+      <div className="plan-loader-main">
+        <div className="plan-loader-ring">
+          <svg className="plan-loader-svg" viewBox="0 0 116 116" aria-hidden="true">
+            <circle className="plan-loader-track" cx="58" cy="58" r="48" pathLength="100" />
+            <circle
+              className="plan-loader-progress"
+              cx="58"
+              cy="58"
+              r="48"
+              pathLength="100"
+              style={{ strokeDashoffset: 100 - progress } as CSSProperties}
+            />
+          </svg>
+          <span>{progress}%</span>
+        </div>
+        <h1>Tailoring your unique<br />experience...</h1>
+      </div>
+      <div className="plan-loader-list">
+        {LOADER_STEPS.map((item, index) => (
+          <div className={index <= activeStep ? "plan-loader-row is-visible" : "plan-loader-row"} key={item.label}>
+            <span className="plan-loader-icon">{item.icon}</span>
+            <p>{item.label}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -844,8 +908,16 @@ const planUnits = [
   },
 ];
 
+const payPlans = [
+  { id: "weekly", title: "Weekly", original: "$19.98", price: "$9.99", cadence: "/week", total: "$9.99 today" },
+  { id: "monthly", title: "Monthly", original: "$39.98", price: "$19.99", cadence: "/month", total: "$19.99 today", badge: "Best value" },
+  { id: "yearly", title: "Yearly", original: "$199.98", price: "$99.99", cadence: "/year", total: "$99.99 today" },
+];
+
 function PlanPreview({ answers, onStart }: { answers: Record<string, string[]>; onStart: () => void }) {
   const first = (question: string, fallback: string) => answers[question]?.[0] ?? fallback;
+  const [selectedPlan, setSelectedPlan] = useState("monthly");
+  const [offerSeconds, setOfferSeconds] = useState(9 * 60 + 52);
   const timeAnswer = first("How much time can you give most days?", "20+ minutes");
   const periodAnswer = first("How quickly do you want to achieve results?", "Within three months");
   const perDay = timeAnswer === "20+ minutes" ? "20 min" : timeAnswer.replace("minutes", "min");
@@ -853,6 +925,14 @@ function PlanPreview({ answers, onStart }: { answers: Record<string, string[]>; 
     : periodAnswer === "Within a month" ? "1 month"
     : periodAnswer === "Over the next year" ? "1 year"
     : "3 months";
+  const chosenPlan = payPlans.find((plan) => plan.id === selectedPlan) ?? payPlans[1];
+  const offerMinutes = Math.floor(offerSeconds / 60).toString().padStart(2, "0");
+  const offerRemainingSeconds = (offerSeconds % 60).toString().padStart(2, "0");
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setOfferSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <div className="plan-page">
@@ -876,7 +956,7 @@ function PlanPreview({ answers, onStart }: { answers: Record<string, string[]>; 
       </div>
 
       <div className="plan-graph-card" aria-label="Confidence growth over time">
-        <img src="/plan-graphs.png" alt="" className="plan-graph-img" />
+        <img src="/plan-graph-frame.png" alt="" className="plan-graph-img" />
       </div>
 
       <div className="plan-units">
@@ -895,9 +975,48 @@ function PlanPreview({ answers, onStart }: { answers: Record<string, string[]>; 
         ))}
       </div>
 
+      <section className="pay-section" aria-label="Choose your plan">
+        <div className="pay-offer">
+          <p>Today only: 50% off your plan</p>
+          <div className="pay-timer" aria-label={`Offer ends in ${offerMinutes} minutes and ${offerRemainingSeconds} seconds`}>
+            <span>{offerMinutes}</span>
+            <i>:</i>
+            <span>{offerRemainingSeconds}</span>
+          </div>
+        </div>
+
+        <div className="pay-plans">
+          {payPlans.map((plan) => {
+            const selected = plan.id === selectedPlan;
+            return (
+              <button
+                className={selected ? "pay-plan is-selected" : "pay-plan"}
+                key={plan.id}
+                onClick={() => setSelectedPlan(plan.id)}
+                type="button"
+              >
+                {plan.badge && <span className="pay-plan-badge">{plan.badge}</span>}
+                <span className="pay-radio" aria-hidden="true">{selected && <span />}</span>
+                <span className="pay-plan-copy">
+                  <strong>{plan.title}</strong>
+                  <span><s>{plan.original}</s> {plan.price}</span>
+                </span>
+                <span className="pay-plan-rate">
+                  <strong>{plan.price}</strong>
+                  <span>{plan.cadence}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <div className="plan-bottom-spacer" />
       <div className="plan-sticky-cta">
-        <button className="f-cta" onClick={onStart}>Get Started</button>
+        <button className="f-cta plan-pay-cta" onClick={onStart}>
+          <span>Proceed with 50% OFF</span>
+          <small>Total: {chosenPlan.total}</small>
+        </button>
       </div>
     </div>
   );
