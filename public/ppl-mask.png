@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 390 317" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect id="Mask" width="390" height="317" fill="url(#paint0_radial_0_4)"/>
+<defs>
+<radialGradient id="paint0_radial_0_4" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(195) rotate(90) scale(305.5 375.852)">
+<stop stop-color="#D9D9D9"/>
+<stop offset="0.711608" stop-color="#D1D1D1" stop-opacity="0.912796"/>
+<stop offset="0.810814" stop-color="#B0B0B0" stop-opacity="0.563123"/>
+<stop offset="0.921926" stop-color="#8E8E8E" stop-opacity="0.2"/>
+<stop offset="1" stop-color="#737373" stop-opacity="0"/>
+</radialGradient>
+</defs>
+</svg>
